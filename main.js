@@ -27,14 +27,26 @@ function getImagePath(httpCode) {
 
 async function handleGet(httpCode, res) {
     const imagePath = getImagePath(httpCode);
-
+    
     try {
         const imageData = await fs.readFile(imagePath);
         res.writeHead(200, { 'Content-Type': 'image/jpeg' });
         res.end(imageData);
     } catch (error) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end(`Not Found: No image for HTTP code ${httpCode}\n`);
+        try {
+            const response = await superagent
+                .get(`https://http.cat/${httpCode}`)
+                .buffer(true)
+                .responseType('arraybuffer');
+            
+            await fs.writeFile(imagePath, Buffer.from(response.body));
+            
+            res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+            res.end(Buffer.from(response.body));
+        } catch (fetchError) {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end(`Not Found: No image for HTTP code ${httpCode}\n`);
+        }
     }
 }
 
